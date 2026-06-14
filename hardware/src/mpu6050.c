@@ -125,44 +125,29 @@ float mpu6050_angleDiff(float target, float current)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
- 
- 
     if(GPIO_Pin == MPU6050_PIN_INT)
     {
-        float dt = 0.01f; // Chu kỳ 10ms chuẩn xác từ phần cứng MPU
- 
-        mpu6050_readGyroZ();   // Chỉ đọc 2 byte trục Z qua I2C (Cực nhanh)
-        mpu6050_processYaw(dt); // Cộng dồn góc xoay
-        // Flag++;
-        // if(Flag >= 2)
-        // {
-        // 	Flag = 0;
- 
-        // 	/* Tính delta quãng đường đi được trong 20ms (dt_s)
-        // 	 * SỬA BUG: trước đây last_dist_l/last_dist_r không được cập nhật
-        // 	 * -> dl, dr luôn bằng ec_l.dist/ec_r.dist (giá trị tích lũy tuyệt đối)
-        // 	 * -> pose.v, pose.x, pose.y trong Kinematics_update bị tính sai
-        // 	 *    (tăng vọt theo thời gian) */
-        //     f32 dl = ec_l.dist - last_dist_l;
-        //     f32 dr = ec_r.dist - last_dist_r;
- 
-        //     last_dist_l = ec_l.dist;
-        //     last_dist_r = ec_r.dist;
- 
-        // 	Kinematics_update(dl, dr);
- 
-        // 	/* HeadingHold_Task chỉ điều chỉnh g_sp_w để giữ hướng đi thẳng
-        // 	 * theo heading_target (yaw), KHÔNG đụng tới g_sp_v.
-        // 	 * g_sp_v được set ở main.c (mặc định 0.15f) hoặc bởi navigation.
-        // 	 *
-        // 	 * PH_task() (Position Hold) chỉ dùng khi robot cần đứng giữ một
-        // 	 * điểm cố định (ph.state = PH_HOLD/PH_RETURN, được kích hoạt qua
-        // 	 * PH_activate()). Ở trạng thái PH_OFF mặc định, PH_task() không
-        // 	 * làm gì cả nên không cần gọi trong vòng lặp đi thẳng thông thường. */
-        // 	// HeadingHold_Task();
- 
-        // 	// motorcontrol_pid();
-        // }
- 
+        float dt = 0.01f;
+
+        mpu6050_readGyroZ();
+        mpu6050_processYaw(dt);
+
+        if (!system_ready) return;
+
+        Flag++;
+        if (Flag >= 2)
+        {
+            Flag = 0;
+
+            f32 dl = ec_l.dist - last_dist_l;
+            f32 dr = ec_r.dist - last_dist_r;
+            last_dist_l = ec_l.dist;
+            last_dist_r = ec_r.dist;
+
+            Kinematics_update(dl, dr);
+
+            HeadingHold_Task();
+            motorcontrol_pid();   // tự bỏ qua nếu nav_manual = 1
+        }
     }
 }

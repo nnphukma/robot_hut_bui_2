@@ -28,4 +28,5 @@ doan_01/main.o: ..\Core\Src\main.c ..\Core\Inc\main.h \
   ..\hardware\inc\control.h ..\hardware\inc\types.h \
   ..\hardware\inc\pid.h ..\hardware\inc\motor.h \
   ..\hardware\inc\encoder.h ..\hardware\inc\mpu6050.h \
-  ..\hardware\inc\delay.h
+  ..\hardware\inc\delay.h ..\hardware\inc\navigation.h \
+  ..\hardware\inc\VL53L0X.h ..\hardware\inc\Servo.h

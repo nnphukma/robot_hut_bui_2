@@ -158,7 +158,7 @@ void pid_setup()
 
 void motorcontrol_pid()
 {
-
+    if (nav_manual) return;
     Kinematics_inverse(g_sp_v,g_sp_w,&sl,&sr);
     /* Left */
     if(fabs(sl) <0.0001f)

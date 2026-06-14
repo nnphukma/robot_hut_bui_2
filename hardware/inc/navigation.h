@@ -34,6 +34,10 @@ typedef enum {
 #define MAX_TURN_PWM     400    // Giới hạn PWM lớn nhất khi xoay
 #define MIN_TURN_PWM     220    // Khử ma sát tĩnh (Dead-zone) sàn nhà
 
+// --- Tham số cho 5 hàm Nav_xxx ---
+#define NAV_FWD_SPEED     0.15f  // m/s - tốc độ tịnh tiến khi Nav_Motor_Forward()
+#define TURN_DONE_DEG     1.5f   // sai số góc (độ) coi như đã quay xong
+#define TURN_SETTLE_MS    150u   // giữ ổn định bao lâu trước khi dừng hẳn (ms)
 
 extern uint16_t lidarDistance; // Biến toàn cục lưu giá trị khoảng cách đo được từ Lidar
 extern uint16_t Lidar_Map[181]; // Bản đồ khoảng cách từ 0 đến 180 độ, mỗi phần tử lưu khoảng cách tại góc tương ứng

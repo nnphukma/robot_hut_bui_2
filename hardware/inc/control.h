@@ -23,6 +23,9 @@
 #define PH_DEAD_M    0.03f   /* 3cm: tại đích */
 #define PH_DEAD_R    0.10f   /* 6°: thẳng hướng */
 
+extern volatile u8 nav_manual;
+
+
 typedef struct {
     float x;
     float y;

@@ -2,13 +2,22 @@
 #include "motor.h"
 #include "mpu6050.h"
 #include "encoder.h"
+#include "control.h"
 #include "delay.h"
 #include "math.h"
 #include "Servo.h"
 #include "VL53L0X.h"
+// ===================================================CONFIG CAC GIA TRI ======================================================================
+
 
 uint16_t lidarDistance = 0; // Mang luu gia tri VL53L0X o cac goc quay
 uint16_t Lidar_Map[181] = {0}; // Ban do luu gia tri VL53L0X o cac goc quay tu 0 den 180 do
+
+/* Cờ "lái thủ công": khi =1, motorcontrol_pid() ở control.c sẽ KHÔNG
+ * ghi vào TIM4 nữa, để Nav_MPU_Turn() được toàn quyền điều khiển động cơ
+ * bằng motor_run() trong lúc xoay. */
+volatile u8 nav_manual = 0;
+
 
 //Ham lay gia tri khoang cach hien tai va luu vao bien toan cuc (de sau nay hien thi ra OLED)
 uint16_t Lidar_GetDist() {
@@ -17,14 +26,111 @@ uint16_t Lidar_GetDist() {
     return current_distance;
 }
 
-//PHAN DI CHUYEN (AE DIEN VAO DAY NHE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
-void Nav_Motor_Forward(void) { /* Bật cầu H chạy thẳng */ }
-void Nav_Motor_Stop(void)    { /* Phanh động cơ */ }
-void Nav_MPU_Turn(int angle) { /* Xoay xe theo PID & MPU6050 (+90 / -90) */ }
-void Nav_Encoder_Reset(void) { /* Xóa biến đếm số vòng bánh xe */ }
-float Nav_Encoder_Get_Dist(void) { return 0.0f; /* Trả về số mét tịnh tiến */ }
+// ===================================================NHUNG HAM DI CHUYEN CO BAN=====================================================================
 
-//Bo loc khong gian
+/* Chạy thẳng: chốt hướng hiện tại làm hướng chuẩn, đặt vận tốc mục tiêu.
+ * Vòng lặp nền (HeadingHold_Task + motorcontrol_pid, chạy mỗi 20ms trong
+ * ngắt MPU6050) sẽ tự bơm PWM ra TIM4 và giữ xe đi thẳng theo yaw. */
+
+void Nav_Motor_Forward(void) {  /* Bật cầu H chạy thẳng */ 
+
+    nav_manual = 0;
+
+    PID_Reset(&pid_l);
+    PID_Reset(&pid_r);
+
+    heading_target = yaw;   // "khóa" hướng đi hiện tại
+    g_sp_w = 0.0f;
+    g_sp_v = NAV_FWD_SPEED;
+
+
+}
+
+
+void Nav_Motor_Stop(void)    { /* Phanh động cơ */ 
+
+    nav_manual = 0;
+
+    g_sp_v = 0.0f;
+    g_sp_w = 0.0f;
+
+    PID_Reset(&pid_l);
+    PID_Reset(&pid_r);
+
+    motor_stop();
+
+}
+
+/* Xoay xe tại chỗ một góc `angle` (độ) so với hướng hiện tại, dùng
+ * vòng P đơn giản trên sai số yaw (mpu6050_angleDiff) và motor_run()
+ * trực tiếp (bypass vòng PID vận tốc). */
+
+void Nav_MPU_Turn(int angle) { /* Xoay xe theo PID & MPU6050 (+90 / -90) */ 
+
+    nav_manual = 1;          // "rút" motorcontrol_pid ra khỏi cuộc
+
+    g_sp_v = 0.0f;
+    g_sp_w = 0.0f;
+    PID_Reset(&pid_l);
+    PID_Reset(&pid_r);
+    motor_stop();
+
+    float target = yaw + (float)angle;
+    if (target >  180.0f) target -= 360.0f;
+    if (target < -180.0f) target += 360.0f;
+
+    u32 settle_ms = 0;
+
+    while (1)
+    {
+        float err = mpu6050_angleDiff(target, yaw);
+
+        if (fabsf(err) <= TURN_DONE_DEG)
+        {
+            motor_stop();
+            settle_ms += dt_ms;
+            if (settle_ms >= TURN_SETTLE_MS) break;
+        }
+        else
+        {
+            settle_ms = 0;
+
+            float pwm_f = TURN_KP * err;
+            pwm_f = limit(pwm_f, -(float)MAX_TURN_PWM, (float)MAX_TURN_PWM);
+
+            if (pwm_f > 0.0f && pwm_f <  MIN_TURN_PWM) pwm_f =  MIN_TURN_PWM;
+            if (pwm_f < 0.0f && pwm_f > -MIN_TURN_PWM) pwm_f = -MIN_TURN_PWM;
+
+            i16 pwm = (i16)pwm_f;
+            // err > 0  =>  cần yaw TĂNG  =>  bánh trái lùi, bánh phải tiến
+            motor_run(-pwm, pwm);
+        }
+
+        HAL_Delay(dt_ms);
+    }
+
+    motor_stop();
+    heading_target = yaw;    // đồng bộ hướng "thẳng" mới cho HeadingHold_Task
+    nav_manual = 0;          // trả quyền điều khiển lại cho vòng lặp nền
+}
+
+
+void Nav_Encoder_Reset(void) { /* Xóa biến đếm số vòng bánh xe */ 
+    ec_l.dist  = 0.0f;
+    ec_r.dist  = 0.0f;
+    ec_l.total = 0;
+    ec_r.total = 0;
+
+    last_dist_l = 0.0f;
+    last_dist_r = 0.0f;
+}
+
+
+float Nav_Encoder_Get_Dist(void) { return 0.0f; /* Trả về số mét tịnh tiến */
+    return (ec_l.dist + ec_r.dist) * 0.5f;
+}
+
+//==================================================== Bo loc khong gian==============================================================================
 
 //Quet hanh lang phia truoc (60-120 do)
 bool Check_Front_Corridor(void) {
