@@ -126,7 +126,7 @@ void Nav_Encoder_Reset(void) { /* Xóa biến đếm số vòng bánh xe */
 }
 
 
-float Nav_Encoder_Get_Dist(void) { return 0.0f; /* Trả về số mét tịnh tiến */
+float Nav_Encoder_Get_Dist(void) {  
     return (ec_l.dist + ec_r.dist) * 0.5f;
 }
 
