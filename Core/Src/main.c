@@ -179,45 +179,10 @@ int main(void)
 
   while (1)
   {
-    /* ===== TEST 5 HAM NAV_xxx ===== */
+    
+    test_robot_navigation();   /* Chay kich ban: thang 50cm -> trai 90 -> thang 50cm -> trai 90 -> thang mai */
 
-    // 1. Di thang 40cm
-    Nav_Encoder_Reset();
-    Nav_Motor_Forward();
-    while (Nav_Encoder_Get_Dist() < 0.40f)
-    {
-        HAL_Delay(10);
-    }
-    Nav_Motor_Stop();
-
-    // 2. Dung 2 giay
-    HAL_Delay(2000);
-
-    // 3. Xoay phai 90 do
-    Nav_MPU_Turn(DIR_RIGHT);   // = +90
-
-    // 4. Di thang tiep 40cm
-    Nav_Encoder_Reset();
-    Nav_Motor_Forward();
-    while (Nav_Encoder_Get_Dist() < 0.40f)
-    {
-        HAL_Delay(10);
-    }
-    Nav_Motor_Stop();
-
-    // 5. Dung 2 giay
-    HAL_Delay(2000);
-
-    // 6. Xoay trai 90 do
-    Nav_MPU_Turn(DIR_LEFT);    // = -90
-
-    // Het kich ban test -> dung han, khong lap lai
-    Nav_Motor_Stop();
-    while (1)
-    {
-        HAL_Delay(1000);
-    }
-
+    Debug_Print1();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
